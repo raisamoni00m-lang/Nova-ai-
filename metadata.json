@@ -1,0 +1,7 @@
+{
+  "name": "Nova",
+  "description": "Nova is a next-generation AI voice assistant with phone control, Bengali, English and Banglish support, accessibility automation, smart memory, and privacy protection.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

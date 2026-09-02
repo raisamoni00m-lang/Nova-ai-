@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Nova</string>
+    <string name="accessibility_service_label">Nova Assistant Action Engine</string>
+    <string name="accessibility_service_description">Enables Nova voice assistant to perform user-requested UI actions such as scrolling, tapping visible buttons, navigating Back/Home, and reading screen contents.</string>
+    <string name="notification_listener_label">Nova Notification Assistant</string>
+</resources>
+
