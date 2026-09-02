@@ -10,6 +10,9 @@ import com.example.data.local.entity.MemoryEntity
 import com.example.data.local.entity.PrivacyAuditEntity
 import com.example.domain.ai.ActionResult
 import com.example.domain.ai.ToolCall
+import com.example.domain.controller.ScreenReaderController
+import com.example.domain.voice.OmniVoiceEngine
+import com.example.domain.voice.OmniVoiceModelManager
 import com.example.domain.voice.SpeechState
 import com.example.service.NovaAccessibilityService
 import com.example.service.NovaNotificationItem
@@ -33,6 +36,9 @@ class NovaViewModel(application: Application) : AndroidViewModel(application) {
     private val deviceController = app.deviceController
     private val ttsManager = app.ttsManager
     private val speechRecognizer = app.speechRecognizer
+    val omniVoiceEngine = app.omniVoiceEngine
+    val modelManager = app.modelManager
+    val screenReader = app.screenReader
 
     // --- State flows ---
     val messages: StateFlow<List<ChatMessageEntity>> = repository.allMessages
@@ -56,6 +62,19 @@ class NovaViewModel(application: Application) : AndroidViewModel(application) {
     val recentNotifications: StateFlow<List<NovaNotificationItem>> = NovaNotificationListenerService.recentNotifications
 
     val isWakeWordActive: StateFlow<Boolean> = NovaWakeWordForegroundService.isWakeWordActive
+
+    // Screen Reader state
+    val screenReaderActive: StateFlow<Boolean> = screenReader.isActive
+    val screenReaderElements: StateFlow<List<ScreenReaderController.ScreenElement>> = screenReader.elements
+    val screenReaderIndex: StateFlow<Int> = screenReader.currentIndex
+    val screenReaderAutoAdvance: StateFlow<Boolean> = screenReader.autoAdvance
+
+    // OmniVoice state
+    val omniVoiceReady: StateFlow<Boolean> = omniVoiceEngine.isInitialized
+    val omniVoiceInfo: StateFlow<String> = omniVoiceEngine.engineInfo
+    val modelDownloadProgress: StateFlow<Float?> = modelManager.downloadProgress
+    val isModelDownloading: StateFlow<Boolean> = modelManager.isDownloading
+    val downloadStatus: StateFlow<String?> = modelManager.downloadStatus
 
     private val _visualState = MutableStateFlow(AssistantVisualState.IDLE)
     val visualState: StateFlow<AssistantVisualState> = _visualState.asStateFlow()
@@ -496,9 +515,53 @@ class NovaViewModel(application: Application) : AndroidViewModel(application) {
         isDarkMode.value = dark
     }
 
+    // --- Screen Reader Actions ---
+
+    fun startScreenReader() {
+        screenReader.startReading()
+    }
+
+    fun stopScreenReader() {
+        screenReader.stopReading()
+    }
+
+    fun screenReaderNext() {
+        screenReader.nextElement()
+    }
+
+    fun screenReaderPrevious() {
+        screenReader.previousElement()
+    }
+
+    fun toggleScreenReaderAutoAdvance() {
+        screenReader.toggleAutoAdvance()
+    }
+
+    // --- OmniVoice Model Management ---
+
+    fun downloadOmniVoiceModel(model: OmniVoiceModelManager.ModelInfo) {
+        viewModelScope.launch(Dispatchers.IO) {
+            modelManager.downloadModel(model)
+            if (modelManager.isModelDownloaded(model.name)) {
+                omniVoiceEngine.initializeTts()
+                omniVoiceEngine.initializeAsr()
+            }
+        }
+    }
+
+    fun deleteOmniVoiceModel(modelName: String) {
+        modelManager.deleteModel(modelName)
+    }
+
+    fun getDownloadedModels(): List<String> = modelManager.listDownloadedModels()
+
+    fun getAvailableModels(): List<OmniVoiceModelManager.ModelInfo> = modelManager.availableModels
+
     override fun onCleared() {
         ttsManager.shutdown()
         speechRecognizer.stopListening()
+        omniVoiceEngine.shutdown()
+        screenReader.stopReading()
         super.onCleared()
     }
 }

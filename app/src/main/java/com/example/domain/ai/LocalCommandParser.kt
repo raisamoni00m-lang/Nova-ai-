@@ -143,11 +143,39 @@ object LocalCommandParser {
         // Screen Reader & Visual Screen Inspection
         if (clean.contains("screen reader") || clean.contains("read screen") || clean.contains("screen poro") ||
             clean.contains("স্ক্রিন পড়ো") || clean.contains("স্ক্রিন পড়ো") || clean.contains("স্ক্রিনে কি আছে") ||
-            clean.contains("screen e ki ache") || clean.contains("read what is on screen") || clean.contains("read this page")
+            clean.contains("screen e ki ache") || clean.contains("read what is on screen") || clean.contains("read this page") ||
+            clean.contains("start screen reader") || clean.contains("screen reader start")
         ) {
             return AIPlan(
                 spokenResponse = if (isBengali) "আপনার স্ক্রিনে কি আছে তা পড়ে শোনাচ্ছি।" else "Reading out the content on your screen.",
                 toolCalls = listOf(ToolCall("read_screen", emptyMap())),
+                language = if (isBengali) "bn" else "en"
+            )
+        }
+
+        // Screen Reader Navigation: next element
+        if (clean.contains("next element") || clean.contains("screen reader next") || clean.contains("poro felem jao") || clean.contains("পড়ো ফেলেম যাও") || clean.contains("next poro") || clean.contains("পরেরটা পড়ো")) {
+            return AIPlan(
+                spokenResponse = if (isBengali) "পরের এলিমেন্টে যাচ্ছি।" else "Moving to next element.",
+                toolCalls = listOf(ToolCall("screen_reader_next", emptyMap())),
+                language = if (isBengali) "bn" else "en"
+            )
+        }
+
+        // Screen Reader Navigation: previous element
+        if (clean.contains("previous element") || clean.contains("screen reader previous") || clean.contains("previous poro") || clean.contains("আগেরটা পড়ো")) {
+            return AIPlan(
+                spokenResponse = if (isBengali) "আগের এলিমেন্টে ফিরে যাচ্ছি।" else "Going back to previous element.",
+                toolCalls = listOf(ToolCall("screen_reader_previous", emptyMap())),
+                language = if (isBengali) "bn" else "en"
+            )
+        }
+
+        // Screen Reader Navigation: stop
+        if (clean.contains("stop screen reader") || clean.contains("stop reading") || clean.contains("screen reader stop") || clean.contains("পড়া থামাও") || clean.contains("pora thamo")) {
+            return AIPlan(
+                spokenResponse = if (isBengali) "স্ক্রিন রিডার বন্ধ করছি।" else "Stopping screen reader.",
+                toolCalls = listOf(ToolCall("screen_reader_stop", emptyMap())),
                 language = if (isBengali) "bn" else "en"
             )
         }

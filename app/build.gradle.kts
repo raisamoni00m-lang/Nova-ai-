@@ -1,4 +1,5 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import java.net.URL
 
 plugins {
   alias(libs.plugins.android.application)
@@ -135,6 +136,48 @@ dependencies {
   androidTestImplementation(libs.androidx.runner)
   debugImplementation(libs.androidx.compose.ui.test.manifest)
   debugImplementation(libs.androidx.compose.ui.tooling)
+  // OmniVoice (k2-fsa/sherpa-onnx) on-device neural TTS & ASR library.
+  // The AAR contains Java/Kotlin bindings and JNI native libs for all Android ABIs.
+  // Downloaded automatically by the downloadSherpaOnnx task before preBuild.
+  implementation(fileTree("libs") { include("*.aar") })
+
   "ksp"(libs.androidx.room.compiler)
   "ksp"(libs.moshi.kotlin.codegen)
+}
+
+// --- OmniVoice (sherpa-onnx) AAR auto-download ---
+// Downloads the pre-built AAR from GitHub releases so the project builds without
+// manually fetching the binary. Cached in app/libs/ after first download.
+val sherpaOnnxVersion = "1.13.7"
+val sherpaOnnxAarUrl = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v${sherpaOnnxVersion}/sherpa-onnx-${sherpaOnnxVersion}.aar"
+val sherpaOnnxAarFile = file("libs/sherpa-onnx-${sherpaOnnxVersion}.aar")
+
+tasks.register("downloadSherpaOnnx") {
+  description = "Downloads the OmniVoice (sherpa-onnx) AAR for on-device neural voice processing."
+  outputs.file(sherpaOnnxAarFile)
+  doLast {
+    if (!sherpaOnnxAarFile.exists()) {
+      sherpaOnnxAarFile.parentFile.mkdirs()
+      println("Downloading sherpa-onnx AAR v${sherpaOnnxVersion} from GitHub...")
+      val connection = URL(sherpaOnnxAarUrl).openConnection() as java.net.HttpURLConnection
+      connection.connectTimeout = 120_000
+      connection.readTimeout = 120_000
+      connection.instanceFollowRedirects = true
+      if (connection.responseCode !in 200..299) {
+        connection.disconnect()
+        throw GradleException("Failed to download sherpa-onnx AAR: HTTP ${connection.responseCode}")
+      }
+      connection.inputStream.use { input ->
+        java.io.FileOutputStream(sherpaOnnxAarFile).use { output ->
+          input.copyTo(output)
+        }
+      }
+      connection.disconnect()
+      println("sherpa-onnx AAR downloaded: ${sherpaOnnxAarFile.length() / (1024 * 1024)}MB")
+    }
+  }
+}
+
+tasks.named("preBuild") {
+  dependsOn("downloadSherpaOnnx")
 }

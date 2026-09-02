@@ -23,6 +23,15 @@ class NovaTTSManager(
     private var isInitialized = false
     private val mainHandler = Handler(Looper.getMainLooper())
     private var pendingSpeech: Pair<String, String?>? = null
+    private var _omniVoiceEngine: OmniVoiceEngine? = null
+
+    fun setOmniVoiceEngine(engine: OmniVoiceEngine) {
+        _omniVoiceEngine = engine
+    }
+
+    var omniVoiceEngine: OmniVoiceEngine?
+        get() = _omniVoiceEngine
+        set(value) { _omniVoiceEngine = value }
 
     private val _isSpeaking = MutableStateFlow(false)
     val isSpeaking: StateFlow<Boolean> = _isSpeaking.asStateFlow()
@@ -138,6 +147,19 @@ class NovaTTSManager(
 
     fun speak(text: String, languageCode: String? = null) {
         if (!preferences.autoSpeak || text.isBlank()) return
+
+        // Try OmniVoice neural engine first when selected (k2-fsa/sherpa-onnx)
+        if (preferences.voiceEngine == "omnivoice" && _omniVoiceEngine != null) {
+            val engine = _omniVoiceEngine!!
+            if (engine.initializeTts()) {
+                val spokenText = sanitizeSpeechText(text)
+                if (spokenText.isNotBlank() && engine.speak(spokenText)) {
+                    _isSpeaking.value = true
+                    return
+                }
+                // If OmniVoice failed, fall through to Android TTS
+            }
+        }
 
         if (!isInitialized || tts == null) {
             // Save pending speech to trigger once initialized

@@ -47,6 +47,10 @@ class DeviceActionController(
             "swipe" -> executeSwipe(args["direction"]?.toString() ?: "up")
             "scroll" -> executeScroll(args["direction"]?.toString() ?: "down")
             "read_screen" -> executeReadScreen()
+            "screen_reader_start" -> executeScreenReaderStart(args["auto_advance"]?.toString()?.toBooleanStrictOrNull())
+            "screen_reader_next" -> executeScreenReaderNext()
+            "screen_reader_previous" -> executeScreenReaderPrevious()
+            "screen_reader_stop" -> executeScreenReaderStop()
             "camera_vision" -> executeCameraVision(args["prompt"]?.toString() ?: "")
             "set_voice_engine" -> executeSetVoiceEngine(args["engine"]?.toString() ?: "omnivoice")
             "call_contact" -> executeCallContact(args["name_or_number"]?.toString() ?: "")
@@ -307,6 +311,43 @@ class DeviceActionController(
         val screenText = service.extractVisibleScreenText()
         val textSummary = if (screenText.isBlank()) "No text found on current screen." else screenText
         return ActionResult.ScreenContent(textSummary)
+    }
+
+    private var screenReaderController: Any? = null
+
+    fun setScreenReaderController(controller: com.example.domain.controller.ScreenReaderController) {
+        screenReaderController = controller
+    }
+
+    private fun executeScreenReaderStart(autoAdvance: Boolean?): ActionResult {
+        val controller = screenReaderController as? ScreenReaderController
+            ?: return ActionResult.Failure("Screen reader is not available.")
+        if (autoAdvance != null && controller.autoAdvance.value != autoAdvance) {
+            controller.toggleAutoAdvance()
+        }
+        controller.startReading()
+        return ActionResult.Success("Screen reader started. Reading elements aloud.", "auto_advance=${controller.autoAdvance.value}")
+    }
+
+    private fun executeScreenReaderNext(): ActionResult {
+        val controller = screenReaderController as? ScreenReaderController
+            ?: return ActionResult.Failure("Screen reader is not available.")
+        controller.nextElement()
+        return ActionResult.Success("Moving to next element.", "index=${controller.currentIndex.value}")
+    }
+
+    private fun executeScreenReaderPrevious(): ActionResult {
+        val controller = screenReaderController as? ScreenReaderController
+            ?: return ActionResult.Failure("Screen reader is not available.")
+        controller.previousElement()
+        return ActionResult.Success("Moving to previous element.", "index=${controller.currentIndex.value}")
+    }
+
+    private fun executeScreenReaderStop(): ActionResult {
+        val controller = screenReaderController as? ScreenReaderController
+            ?: return ActionResult.Failure("Screen reader is not available.")
+        controller.stopReading()
+        return ActionResult.Success("Screen reader stopped.", "stopped")
     }
 
     private fun executeCameraVision(prompt: String): ActionResult {

@@ -7,8 +7,11 @@ import com.example.data.remote.GeminiClient
 import com.example.data.repository.NovaRepository
 import com.example.domain.ai.NovaAIBrain
 import com.example.domain.controller.DeviceActionController
+import com.example.domain.controller.ScreenReaderController
 import com.example.domain.voice.NovaSpeechRecognizer
 import com.example.domain.voice.NovaTTSManager
+import com.example.domain.voice.OmniVoiceEngine
+import com.example.domain.voice.OmniVoiceModelManager
 
 class NovaApplication : Application() {
 
@@ -36,6 +39,15 @@ class NovaApplication : Application() {
     lateinit var speechRecognizer: NovaSpeechRecognizer
         private set
 
+    lateinit var omniVoiceEngine: OmniVoiceEngine
+        private set
+
+    lateinit var modelManager: OmniVoiceModelManager
+        private set
+
+    lateinit var screenReader: ScreenReaderController
+        private set
+
     override fun onCreate() {
         super.onCreate()
         instance = this
@@ -54,6 +66,11 @@ class NovaApplication : Application() {
         deviceController = DeviceActionController(this)
         ttsManager = NovaTTSManager(this, preferences)
         speechRecognizer = NovaSpeechRecognizer(this, preferences)
+        omniVoiceEngine = OmniVoiceEngine(this, preferences)
+        modelManager = OmniVoiceModelManager(this)
+        screenReader = ScreenReaderController(ttsManager)
+        ttsManager.setOmniVoiceEngine(omniVoiceEngine)
+        deviceController.setScreenReaderController(screenReader)
     }
 
     companion object {

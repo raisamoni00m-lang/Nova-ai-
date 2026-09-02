@@ -67,6 +67,8 @@ import com.example.ui.theme.GlassTextSlate200
 import com.example.ui.theme.GlassTextSlate300
 import com.example.ui.theme.GlassTextSlate400
 import com.example.ui.theme.GlassVioletAccent
+import com.example.domain.voice.OmniVoiceEngine
+import com.example.domain.voice.OmniVoiceModelManager
 
 @Composable
 fun SettingsScreen(
@@ -81,6 +83,18 @@ fun SettingsScreen(
     val autoSpeak by viewModel.autoSpeak.collectAsState()
     val wakeWordEnabled by viewModel.wakeWordEnabled.collectAsState()
     val customApiKey by viewModel.customApiKey.collectAsState()
+
+    // OmniVoice & Screen Reader state
+    val omniVoiceInfo by viewModel.omniVoiceInfo.collectAsState()
+    val modelDownloadProgress by viewModel.modelDownloadProgress.collectAsState()
+    val isModelDownloading by viewModel.isModelDownloading.collectAsState()
+    val downloadStatus by viewModel.downloadStatus.collectAsState()
+    val screenReaderActive by viewModel.screenReaderActive.collectAsState()
+    val screenReaderAutoAdvance by viewModel.screenReaderAutoAdvance.collectAsState()
+    val screenReaderIndex by viewModel.screenReaderIndex.collectAsState()
+
+    val availableModels = remember { viewModel.getAvailableModels() }
+    val downloadedModels = remember { viewModel.getDownloadedModels() }
 
     var apiKeyInput by remember(customApiKey) { mutableStateOf(customApiKey) }
     var keySavedMessage by remember { mutableStateOf(false) }
@@ -394,6 +408,192 @@ fun SettingsScreen(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text("Read Active Screen", fontSize = 12.sp)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // --- Screen Reader Navigation Controls ---
+                    Text(
+                        text = "Element-by-Element Screen Reader",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = GlassTextSlate300
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = { viewModel.startScreenReader() },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (screenReaderActive) GlassEmeraldGreen.copy(alpha = 0.3f) else GlassIndigoPrimary
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                if (screenReaderActive) "Reading…" else "Start Reader",
+                                fontSize = 11.sp
+                            )
+                        }
+                        Button(
+                            onClick = { viewModel.screenReaderPrevious() },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.1f)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("◀ Prev", fontSize = 11.sp)
+                        }
+                        Button(
+                            onClick = { viewModel.screenReaderNext() },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.1f)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Next ▶", fontSize = 11.sp)
+                        }
+                        Button(
+                            onClick = { viewModel.stopScreenReader() },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = GlassVioletAccent.copy(alpha = 0.4f)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Stop", fontSize = 11.sp)
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "Auto-advance through elements",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = GlassTextSlate400
+                        )
+                        Switch(
+                            checked = screenReaderAutoAdvance,
+                            onCheckedChange = { viewModel.toggleScreenReaderAutoAdvance() },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = GlassIndigoPrimary,
+                                uncheckedTrackColor = Color.White.copy(alpha = 0.1f),
+                                uncheckedThumbColor = GlassTextSlate400
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
+        // OmniVoice (k2-fsa/sherpa-onnx) Neural Model Management
+        item {
+            Text(
+                text = "OmniVoice Neural Engine (k2-fsa)",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = GlassTextSlate100
+                )
+            )
+        }
+
+        item {
+            FrostedGlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                backgroundColor = Color.White.copy(alpha = 0.07f),
+                borderColor = Color.White.copy(alpha = 0.12f)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = omniVoiceInfo,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = GlassIndigoLight
+                    )
+
+                    Text(
+                        text = "Download neural TTS/ASR models for on-device, offline voice processing powered by k2-fsa/sherpa-onnx.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = GlassTextSlate400
+                    )
+
+                    if (downloadStatus != null) {
+                        Text(
+                            text = downloadStatus!!,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = GlassTextSlate200
+                        )
+                    }
+
+                    if (modelDownloadProgress != null) {
+                        val progress = modelDownloadProgress!!
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(3.dp)),
+                            color = Color.White.copy(alpha = 0.1f)
+                        ) {
+                            Spacer(
+                                modifier = Modifier
+                                    .fillMaxWidth(progress)
+                                    .background(GlassIndigoPrimary, RoundedCornerShape(3.dp))
+                            )
+                        }
+                    }
+
+                    // List available models to download
+                    availableModels.forEach { model ->
+                        val isDownloaded = downloadedModels.contains(model.name)
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .border(
+                                    1.dp,
+                                    if (isDownloaded) GlassEmeraldGreen.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.1f),
+                                    RoundedCornerShape(10.dp)
+                                ),
+                            color = if (isDownloaded) GlassEmeraldGreen.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.04f)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        model.displayName,
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        color = GlassTextSlate100
+                                    )
+                                    Text(
+                                        "${model.description} (~${model.estimatedSizeMb}MB)",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = GlassTextSlate400
+                                    )
+                                }
+                                if (isDownloaded) {
+                                    Text(
+                                        "✅ Ready",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = GlassEmeraldGreen
+                                    )
+                                } else {
+                                    Button(
+                                        onClick = { viewModel.downloadOmniVoiceModel(model) },
+                                        enabled = !isModelDownloading,
+                                        colors = ButtonDefaults.buttonColors(containerColor = GlassIndigoPrimary),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Text("Download", fontSize = 11.sp, color = Color.White)
+                                    }
+                                }
+                            }
                         }
                     }
                 }

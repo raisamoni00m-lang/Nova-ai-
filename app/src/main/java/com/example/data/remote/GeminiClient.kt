@@ -89,6 +89,11 @@ class GeminiClient(
             21. reminder: {"title": "string", "minutes_from_now": 5}
             22. save_memory: {"key": "string", "value": "string", "category": "preference" | "fact" | "note"}
             23. recall_memory: {"query": "string"}
+            24. screen_reader_start: {"auto_advance": true} (Start element-by-element screen reading via OmniVoice)
+            25. screen_reader_next: {} (Move to next screen element)
+            26. screen_reader_previous: {} (Move to previous screen element)
+            27. screen_reader_stop: {} (Stop screen reader)
+            28. set_voice_engine: {"engine": "omnivoice" | "chatgpt_sky" | "sweet_bn"} (Switch neural TTS engine — OmniVoice uses k2-fsa/sherpa-onnx for on-device neural voice)
 
             RULES:
             - If user just asks a conversational question (e.g. "How are you?", "আজকের আবহাওয়া কেমন?", "কেমন আছো?"), provide sweet, warm conversational reply in spoken_response and leave "tools": [].
